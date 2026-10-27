@@ -4,15 +4,23 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' blob:; connect-src 'self' https://api.open-meteo.com; style-src 'self' 'unsafe-inline'; script-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="曼谷喵">
-<meta name="theme-color" content="#FDA125"><link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icon-180.png"><link rel="apple-touch-icon" href="icon-180.png"><link rel="stylesheet" href="app.css"><title>曼谷喵</title></head>
-<body><div id="lock" class="lock"><div class="cat">🐱</div><h1>曼谷喵導遊</h1><p id="lmsg">鎖起來了喵～</p>
-<button id="bFace" hidden>🔓 用 Face ID 解鎖</button>
-<div id="setupBox" hidden><p>第一次使用：請建立 Face ID 通行金鑰喵</p><button id="bEnroll">😺 設定 Face ID</button></div>
-<details id="rec"><summary>忘記／換手機？用復原密語</summary><input id="pp" type="password" autocomplete="off" placeholder="復原密語"><button id="bPass">解鎖</button></details>
-<p id="lerr" class="err"></p></div>
-<div id="app" hidden><header><span id="clock"></span><button id="bLock" class="small">🔒 鎖定</button></header>
-<main id="main"></main>
-<nav><button data-t="home">🏠<br>首頁</button><button data-t="days">🗓️<br>行程</button><button data-t="docs">🎫<br>票券</button><button data-t="tel">📞<br>電話</button><button data-t="info">📖<br>資訊</button></nav></div>
-<div id="viewer" hidden><button id="vclose">✕ 關閉</button><div id="vbody"></div></div>
+<meta name="theme-color" content="#FFF8EE"><meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon-180.png"><link rel="apple-touch-icon" href="icon-180.png">
+<link rel="stylesheet" href="app.css"><title>曼谷喵導遊</title></head>
+<body>
+<div id="lock" class="lock">
+ <div class="lockcard"><div class="cat">🐱</div><h1>曼谷喵導遊</h1><p class="sub">2026/10/31 – 11/07｜曼谷 8 天 7 夜</p>
+ <p id="lmsg" class="lmsg">鎖起來了喵～</p>
+ <button id="bFace" class="btn primary" hidden>🔓 用 Face ID 解鎖</button>
+ <div id="setupBox" hidden><p class="lmsg">第一次使用：建立 Face ID 通行金鑰喵</p><button id="bEnroll" class="btn primary">😺 設定 Face ID</button><button id="bSkip" class="btn ghost" hidden>先不要，直接看</button></div>
+ <details id="rec"><summary>忘記／換手機？用復原密語</summary><div class="row"><input id="pp" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="輸入復原密語"><button id="bPass" class="btn">解鎖</button></div></details>
+ <p id="lerr" class="err" role="alert"></p></div>
+</div>
+<div id="app" hidden>
+ <header id="top"><div class="ttl" id="ttl">曼谷喵導遊</div><div class="hbtn"><span id="clock" class="clock"></span><button id="bSearch" class="icon" aria-label="搜尋">🔍</button><button id="bLock" class="icon" aria-label="鎖定">🔒</button></div></header>
+ <main id="main"></main>
+ <nav id="tabs"><button data-t="home"><i>🏠</i>首頁</button><button data-t="days"><i>🗓️</i>行程</button><button data-t="docs"><i>🎫</i>票券</button><button data-t="tel"><i>📞</i>聯絡</button><button data-t="info"><i>📖</i>資訊</button></nav>
+</div>
+<div id="sheet" class="sheet" hidden><div class="sheethead"><button id="sClose" class="btn ghost">‹ 返回</button><b id="sTitle"></b><span></span></div><div id="sBody" class="sheetbody"></div></div>
+<div id="qr" class="qrfull" hidden><div class="qrtip">☀️ 請把螢幕亮度調到最亮，對方比較好掃喵</div><img id="qrImg" alt="QR Code"><div id="qrCap" class="qrcap"></div><div id="qrNav" class="qrnav"></div><button id="qClose" class="btn">完成</button></div>
 <script src="app.js"></script></body></html>
