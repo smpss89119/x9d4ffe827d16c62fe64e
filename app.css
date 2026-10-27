@@ -1,0 +1,15 @@
+*{box-sizing:border-box}body{margin:0;font:16px/1.6 -apple-system,"PingFang TC",sans-serif;background:#FFF8EE;color:#3a2a10;-webkit-text-size-adjust:100%}
+.lock{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center}
+.cat{font-size:80px}button{font:inherit;background:#FDA125;color:#fff;border:0;border-radius:14px;padding:12px 20px;margin:6px}
+button.small{padding:4px 10px;font-size:14px}input{font:inherit;padding:10px;border-radius:10px;border:1px solid #ccc;width:220px}
+.err{color:#c00}header{position:sticky;top:0;background:#FECB86;padding:calc(env(safe-area-inset-top) + 6px) 12px 6px;display:flex;justify-content:space-between;align-items:center;z-index:5;font-size:14px}
+main{padding:12px 12px 90px}nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:#fff;border-top:1px solid #eee;padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;background:none;color:#7F4A00;margin:0;padding:6px 0;font-size:12px;border-radius:0}nav button.on{background:#FFE7C2}
+.card{background:#fff;border-radius:16px;padding:14px;margin:10px 0;box-shadow:0 1px 4px #0001}
+.big{font-size:28px;font-weight:700;color:#C06F01}img{max-width:100%;height:auto}
+table{border-collapse:collapse;font-size:14px;display:block;overflow-x:auto}td,th{border:1px solid #eadbc4;padding:4px}
+a{color:#C06F01}a.tel{white-space:nowrap}.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px}.chips button{white-space:nowrap;padding:8px 12px;margin:0;font-size:14px}
+.chips button.off{background:#FECB86;color:#7F4A00}.ev{display:flex;gap:8px;padding:6px 0;border-bottom:1px dashed #eadbc4}.ev.past{opacity:.45}.ev b{min-width:54px}
+.credit{font-size:11px;color:#999}.doc{display:flex;justify-content:space-between;align-items:center}
+#viewer{position:fixed;inset:0;background:#fff;overflow:auto;z-index:20;padding:calc(env(safe-area-inset-top) + 8px) 8px 40px}#viewer img{width:100%;border-bottom:1px solid #ddd}
+h2{color:#C06F01;font-size:20px}h3,h4{color:#7F4A00}blockquote{margin:0;padding:4px 10px;background:#FFF1DA;border-left:4px solid #FDA125}
