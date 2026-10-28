@@ -1,5 +1,5 @@
 'use strict';
-const $=id=>document.getElementById(id), te=new TextEncoder(), LS='bkk_cred_v1', LOCK_MS=5*60e3;
+const $=id=>document.getElementById(id), te=new TextEncoder(), LS='bkk_cred_v1';
 const ub=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0)), bu=b=>btoa(String.fromCharCode(...new Uint8Array(b)));
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let ROLE='',CODE='',SHT=null,V=null,KEY=null,RAW=null,M=null,blobs=new Map(),hiddenAt=0,ST={v:'home'},IDX=null;
@@ -35,19 +35,65 @@ async function shareAuth(){const E=m=>$('shareErr').textContent=m||'';let raw=nu
  SHT=setInterval(()=>{left--;if(left<=0)shareHide();else T()},1000)}
  catch(e){E('無法顯示：'+(e&&e.message||e))}finally{if(raw)raw.fill(0)}}
 /* ---------- lock screen ---------- */
-async function initLock(){
+let faceBusy=false,scanning=false,stream=null,scanT=0,SECRETTXT='';
+const standalone=()=>navigator.standalone===true||(window.matchMedia&&matchMedia('(display-mode: standalone)').matches);
+const dashed=c=>c.match(/.{1,5}/g).join('-');
+/* Turn whatever the user pasted / typed / scanned into candidate secrets.
+   Accepts: setup link (#s=), companion invite link (#c=&e=), SETUP_SECRET / COMPANION_CODE / RECOVERY_PASSPHRASE
+   (with or without the "KEY=" prefix, any case, spaces/line breaks/dashes anywhere). */
+function parseSecret(t){t=String(t||'').trim();const o={s:[],c:[],p:[],ex:0,link:false,hint:''};
+ const cleanQ=x=>x.replace(/^["'“”‘’`<(\[]+|["'“”‘’`>)\],.;，。]+$/g,'');
+ const hi=t.indexOf('#');
+ if(/^https?:\/\//i.test(t)||(hi>=0&&/[?#&](s|c)=/.test(t.slice(hi)))){o.link=true;const g=k=>{const m=t.slice(Math.max(hi,0)).match(new RegExp('[#&?]'+k+'=([A-Za-z0-9_-]+)'));return m&&m[1]};
+  if(g('s')){o.s.push(g('s'));o.hint='s'}if(g('c')){o.c.push(g('c'));o.ex=+g('e')||0;o.hint='c'}return o}
+ const kv=k=>{const m=t.match(new RegExp(k+'\\s*[=:：]\\s*(\\S+)','i'));return m&&cleanQ(m[1])};
+ const rp=kv('RECOVERY_PASSPHRASE'),ss=kv('SETUP_SECRET'),cc=kv('COMPANION_CODE');
+ if(rp||ss||cc){if(rp)o.p.push(rp);if(ss)o.s.push(ss);if(cc)o.c.push(cc);return o}
+ const w=cleanQ(t.replace(/\s+/g,'').replace(/[‐‑‒–—−]/g,'-'));
+ if(w){o.c.push(w);o.s.push(w);o.p.push(w)}return o}
+async function resolveSecret(text){const o=parseSecret(text);
+ if(o.ex&&Date.now()>o.ex)throw Error('這個邀請 QR 已過期，請對方重新顯示一張新的喵');
+ for(const c of o.c){const n=normCode(c);if(CODE_RE.test(n)){if(!V.comp){if(o.hint==='c')throw Error('這個版本不支援旅伴邀請喵');continue}
+   try{return{raw:await unwrapPw(n,V.comp),kind:'c',val:n,link:o.link}}catch(e){}}}
+ for(const x of o.s){if(x.length<20)continue;try{return{raw:await unwrapPw(x,V.setup),kind:'s',val:x,link:o.link}}catch(e){}}
+ for(const x of o.p){if(x.length<16)continue;const seen=new Set([x.toLowerCase(),x]);
+  for(const y of seen){try{return{raw:await unwrapPw(y,V.pass),kind:'p',val:y,link:o.link}}catch(e){}}}
+ throw Error(o.hint==='c'?'邀請連結不對或已作廢喵':o.hint==='s'?'設定連結不對喵':'密語不對喵（可以直接按「貼上」或掃 QR 碼）')}
+function showSetup(msg,kind,link){$('lmsg').textContent=msg;$('setupBox').hidden=false;$('bSkip').hidden=false;$('entry').hidden=true;$('bFace').hidden=true;
+ $('bCopy').hidden=!SECRETTXT;
+ const n=$('sbNote');n.hidden=false;n.innerHTML=standalone()?'✅ 這是主畫面 App，Face ID 設定在這裡就會一直保留。':'⚠️ 你現在在 <b>Safari</b>。iPhone 的「加到主畫面」App 是<b>另一個獨立空間</b>，加完之後要在主畫面 App 裡再<b>掃一次 QR 碼</b>（或按「貼上」）才能設定 Face ID。'}
+async function accepted(r){ROLE=r.kind==='c'?'c':'';CODE=r.kind==='c'?r.val:'';SECRETTXT=r.kind==='c'?dashed(r.val):r.kind==='s'?r.val:'';
+ await openWith(r.raw);err();
+ if(r.kind==='p'&&localStorage.getItem(LS)){RAW=null;unlocked();return}
+ RAW=r.raw;
+ showSetup(r.kind==='c'?(r.link?'旅伴邀請正確喵！請設定你自己的 Face ID':'邀請碼正確！請設定你自己的 Face ID 喵'):r.kind==='s'?'設定連結正確喵！設定 Face ID 以後就能一鍵解鎖':'密語正確！可以順便設定 Face ID 喵')}
+async function runSecret(text){try{err('解密中，請稍等喵…');$('lmsg').textContent='解密中…';const r=await resolveSecret(text);$('pp').value='';$('pp').blur();await accepted(r);return true}
+ catch(e){err(e&&e.message||'密語不對喵');initMsg();return false}}
+function initMsg(){if(KEY)return;$('lmsg').textContent=localStorage.getItem(LS)?'用 Face ID 解鎖喵～':'掃 QR 碼、貼上設定連結，或輸入復原密語喵'}
+async function initLock(auto){
  try{V=await (await fetch('vault.json',{cache:'no-cache'})).json()}catch(e){if(!V){err('離線又沒有快取，請連網再開一次喵');return}}
- const cred=localStorage.getItem(LS), HP=new URLSearchParams(location.hash.slice(1)), s=HP.get('s');
- $('bFace').hidden=!cred;$('setupBox').hidden=true;$('bSkip').hidden=true;
- $('lmsg').textContent=cred?'用 Face ID 解鎖喵～':'請用設定連結開啟，或輸入復原密語喵';
- $('bCopy').hidden=true;
- if(s){history.replaceState(null,'',location.pathname);try{RAW=await unwrapPw(s,V.setup);$('lmsg').textContent='設定連結正確喵！';$('setupBox').hidden=false}catch(e){err('設定連結不對喵')}}
- const c=HP.get('c'),ex=+HP.get('e')||0;
- if(c){history.replaceState(null,'',location.pathname);
-  if(ex&&Date.now()>ex)err('這個邀請 QR 已過期，請對方重新顯示一張新的喵');
-  else if(!V.comp)err('這個版本不支援旅伴邀請喵');
-  else try{RAW=await unwrapPw(normCode(c),V.comp);ROLE='c';CODE=normCode(c);$('lmsg').textContent='旅伴邀請正確喵！先加到主畫面，再設定你自己的 Face ID';$('setupBox').hidden=false;$('bCopy').hidden=false}catch(e){err('邀請連結不對或已作廢喵')}}
-}
+ const cred=localStorage.getItem(LS),HP=new URLSearchParams(location.hash.slice(1)),hs=HP.get('s'),hc=HP.get('c');
+ $('bFace').hidden=!cred;$('setupBox').hidden=true;$('bSkip').hidden=true;$('bCopy').hidden=true;$('sbNote').hidden=true;$('entry').hidden=false;SECRETTXT='';initMsg();
+ if(hs||hc){const raw=location.hash;history.replaceState(null,'',location.pathname);await runSecret(location.origin+location.pathname+raw);return}
+ if(cred&&auto!==false)autoFace()}
+function autoFace(){if(KEY||faceBusy||scanning||!localStorage.getItem(LS)||$('lock').hidden)return;face(true)}
+/* ---------- QR scanner (jsQR, vendored; camera stays on this device) ---------- */
+function stopScan(){scanning=false;clearTimeout(scanT);if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}const v=$('scanVideo');if(v){v.srcObject=null}$('scan').hidden=true}
+async function startScan(){err();
+ if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){err('這個環境不能開相機，請改用「貼上」');return}
+ if(typeof jsQR!=='function'){err('掃描元件沒載入，請改用「貼上」');return}
+ try{stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}}})}
+ catch(e){err(e&&e.name==='NotAllowedError'?'沒有相機權限。請到 iPhone 設定 → 允許這個網頁／App 使用相機，或改用「貼上」':'打不開相機：'+(e&&e.message||e));return}
+ const v=$('scanVideo');v.srcObject=stream;$('scan').hidden=false;scanning=true;$('scanMsg').textContent='把 QR 碼對準框框喵（設定連結／旅伴邀請／密語都可以）';
+ try{await v.play()}catch(e){}
+ const cv=document.createElement('canvas'),g=cv.getContext('2d',{willReadFrequently:true});
+ const loop=()=>{if(!scanning)return;
+  if(v.readyState>=2&&v.videoWidth){const sc=Math.min(1,720/v.videoWidth);cv.width=Math.round(v.videoWidth*sc);cv.height=Math.round(v.videoHeight*sc);g.drawImage(v,0,0,cv.width,cv.height);
+   const im=g.getImageData(0,0,cv.width,cv.height),q=jsQR(im.data,cv.width,cv.height,{inversionAttempts:'dontInvert'});
+   if(q&&q.data){stopScan();runSecret(q.data);return}}
+  scanT=setTimeout(loop,90)};loop()}
+async function pasteClip(){try{const t=await navigator.clipboard.readText();if(!t||!t.trim()){err('剪貼簿是空的喵');return}$('pp').value=t.trim();fit();await runSecret(t)}catch(e){err('讀不到剪貼簿（請按允許，或長按輸入框貼上）')}}
+const fit=()=>{const t=$('pp');t.style.height='auto';t.style.height=Math.min(t.scrollHeight+2,window.innerHeight*.4)+'px'};
 async function prfGet(rawId){const a=await navigator.credentials.get({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),
  allowCredentials:[{type:'public-key',id:rawId}],userVerification:'required',extensions:{prf:{eval:{first:ub(V.prfSalt)}}}}});
  const r=a.getClientExtensionResults().prf;if(!r||!r.results)throw Error('沒有拿到 PRF（需要 iOS 18 以上）');return r.results.first}
@@ -60,18 +106,19 @@ async function enroll(){try{err();if(!window.PublicKeyCredential)throw Error('�
  const iv=crypto.getRandomValues(new Uint8Array(12)),ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},await prfKey(out),RAW);
  localStorage.setItem(LS,JSON.stringify({id:bu(c.rawId),iv:bu(iv),ct:bu(ct),r:ROLE}));CODE='';$('bCopy').hidden=true;
  if(!KEY)await openWith(RAW);RAW=null;unlocked()}catch(e){err('設定失敗喵：'+e.message)}}
-async function face(){try{err();const c=JSON.parse(localStorage.getItem(LS));ROLE=c.r||'';const out=await prfGet(ub(c.id));
- await openWith(await crypto.subtle.decrypt({name:'AES-GCM',iv:ub(c.iv)},await prfKey(out),ub(c.ct)));unlocked()}catch(e){err('解鎖失敗喵：'+e.message)}}
-async function pass(){const v=$('pp').value.trim();if(!v)return;try{err('解密中，請稍等喵…');let raw=null;const nc=normCode(v);if(V.comp&&CODE_RE.test(nc)){try{raw=await unwrapPw(nc,V.comp);ROLE='c';CODE=nc}catch(e){raw=null}}
- if(!raw)raw=await unwrapPw(v,V.pass);$('pp').value='';$('pp').blur();err();
- await openWith(raw);if(!localStorage.getItem(LS)){RAW=raw;$('setupBox').hidden=false;$('bSkip').hidden=false;$('lmsg').textContent=ROLE==='c'?'邀請碼正確！請設定你自己的 Face ID 喵':'密語正確！可以順便設定 Face ID 喵'}else unlocked()}catch(e){err('密語不對喵')}}
-function unlocked(){RAW=null;$('lock').hidden=true;$('app').hidden=false;hiddenAt=0;
+async function face(auto){faceBusy=true;try{if(!auto)err();const c=JSON.parse(localStorage.getItem(LS));ROLE=c.r||'';const out=await prfGet(ub(c.id));
+ await openWith(await crypto.subtle.decrypt({name:'AES-GCM',iv:ub(c.iv)},await prfKey(out),ub(c.ct)));unlocked()}
+ catch(e){if(auto){$('lmsg').textContent='👆 點一下畫面任何地方，就會跳出 Face ID'}else err('解鎖失敗喵：'+(e&&e.message||e))}finally{faceBusy=false}}
+const pass=()=>{const v=$('pp').value;if(v.trim())runSecret(v)};
+function unlocked(){RAW=null;SECRETTXT='';$('lock').hidden=true;$('app').hidden=false;hiddenAt=0;
  const s=history.state&&history.state.v?history.state:{v:'home'};history.replaceState(s,'');render(s);tick()}
 function lock(){shareHide();ROLE='';CODE='';KEY=null;M=null;RAW=null;IDX=null;blobs.forEach(u=>URL.revokeObjectURL(u));blobs.clear();
- LASTKEY='';$('main').innerHTML='';$('sBody').innerHTML='';$('qrImg').removeAttribute('src');$('sheet').hidden=$('qr').hidden=true;$('app').hidden=true;$('lock').hidden=false;err();initLock()}
-/* auto-lock only after >=5 min truly in background */
-function onHide(){shareHide();if(KEY&&!hiddenAt)hiddenAt=Date.now()}
-function onShow(){if(!KEY){hiddenAt=0;return}if(hiddenAt&&Date.now()-hiddenAt>=LOCK_MS)lock();hiddenAt=0}
+ LASTKEY='';$('main').innerHTML='';$('sBody').innerHTML='';$('qrImg').removeAttribute('src');$('sheet').hidden=$('qr').hidden=true;$('app').hidden=true;$('lock').hidden=false;err();stopScan();initLock(false)}
+/* No short auto-lock: stays unlocked while in use / briefly backgrounded. The key lives only in memory, so when iOS
+   closes the app (swipe-away or memory eviction) the next open starts locked and asks for Face ID. Safety net: 12 h in background. */
+const LOCK_MS_BG=12*3600e3;
+function onHide(){shareHide();stopScan();if(KEY&&!hiddenAt)hiddenAt=Date.now()}
+function onShow(){if(!KEY){hiddenAt=0;autoFace();return}if(hiddenAt&&Date.now()-hiddenAt>=LOCK_MS_BG)lock();hiddenAt=0}
 document.addEventListener('visibilitychange',()=>document.visibilityState==='hidden'?onHide():onShow());
 window.addEventListener('pagehide',onHide);window.addEventListener('pageshow',e=>{if(e.persisted)onShow()});
 /* ---------- time helpers ---------- */
@@ -166,12 +213,16 @@ function bind(){$('main').querySelectorAll('[data-go]').forEach(b=>b.onclick=()=
 async function loadImgs(root){for(const im of root.querySelectorAll('img[data-enc]')){const n=im.dataset.enc;im.removeAttribute('data-enc');try{im.src=await blobUrl(n)}catch(e){}}}
 /* ---------- chrome ---------- */
 document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{if(ST.v===b.dataset.t&&!ST.sheetDoc&&!ST.qr){scrollTo({top:0,behavior:'smooth'});return}nav({v:b.dataset.t})});
-$('shareClose').onclick=shareHide;$('bShareAuth').onclick=shareAuth;$('bCopy').onclick=async()=>{try{await navigator.clipboard.writeText(CODE.match(/.{5}/g).join('-'));$('lmsg').textContent='已複製邀請碼！加到主畫面後貼上喵'}catch(e){$('lmsg').textContent='無法複製，請手動記下：'+CODE.match(/.{5}/g).join('-')}};
+$('shareClose').onclick=shareHide;$('bShareAuth').onclick=shareAuth;$('bCopy').onclick=async()=>{try{await navigator.clipboard.writeText(SECRETTXT);$('lmsg').textContent='已複製！到「主畫面 App」按「📋 貼上」就能設定喵'}catch(e){$('lmsg').textContent='無法複製，請手動記下：'+SECRETTXT}};
 $('sClose').onclick=()=>history.back();$('qClose').onclick=()=>history.back();
 $('bSearch').onclick=()=>nav({v:'search'});$('bLock').onclick=lock;
-$('bFace').onclick=face;$('bEnroll').onclick=enroll;$('bSkip').onclick=unlocked;$('bPass').onclick=pass;$('pp').onkeydown=e=>{if(e.key==='Enter')pass()};
+$('bFace').onclick=e=>{e.stopPropagation();face()};$('bEnroll').onclick=e=>{e.stopPropagation();enroll()};$('bSkip').onclick=unlocked;$('bPass').onclick=pass;$('bPaste').onclick=pasteClip;$('bScan').onclick=startScan;$('scanClose').onclick=()=>{stopScan();initMsg()};
+$('pp').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();pass()}};$('pp').oninput=fit;
+/* whole lock screen is one big tap target (iOS needs a tap before it will show Face ID) */
+$('lock').addEventListener('click',e=>{if(KEY&&$('setupBox').hidden)return;if(e.target.closest('button,textarea,input,summary,details,a,#scan'))return;
+ if(!$('setupBox').hidden)enroll();else if(localStorage.getItem(LS))face()});
 function tick(){if(!KEY)return;$('clock').textContent='曼谷 '+hm(Date.now(),'Asia/Bangkok');if(ST.v==='home'&&!ST.qr&&!ST.sheetDoc&&!document.hidden&&!($('wx')&&$('wx').textContent.includes('°'))){const y=scrollY;home();scrollTo(0,y)}}
 setInterval(tick,30e3);
 const setHH=()=>document.documentElement.style.setProperty('--hh',$('top').offsetHeight+'px');addEventListener('resize',setHH);new ResizeObserver(setHH).observe($('top'));
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');
-initLock();
+initLock(true);

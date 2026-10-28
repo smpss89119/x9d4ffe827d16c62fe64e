@@ -11,9 +11,12 @@
 <div id="lock" class="lock">
  <div class="lockcard"><div class="cat">🐱</div><h1>曼谷喵導遊</h1><p class="sub">2026/10/31 – 11/07｜曼谷 8 天 7 夜</p>
  <p id="lmsg" class="lmsg">鎖起來了喵～</p>
- <button id="bFace" class="btn primary" hidden>🔓 用 Face ID 解鎖</button>
- <div id="setupBox" hidden><p class="lmsg">第一次使用：建立 Face ID 通行金鑰喵</p><button id="bEnroll" class="btn primary">😺 設定 Face ID</button><button id="bSkip" class="btn ghost" hidden>先不要，直接看</button><button id="bCopy" class="btn ghost" hidden>📋 複製邀請碼（加到主畫面後貼上用）</button></div>
- <details id="rec"><summary>忘記／換手機／旅伴邀請碼？</summary><div class="row"><input id="pp" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="輸入復原密語或旅伴邀請碼"><button id="bPass" class="btn">解鎖</button></div></details>
+ <button id="bFace" class="btn primary big" hidden>🔓 用 Face ID 解鎖</button>
+ <div id="setupBox" hidden><p class="lmsg">建立 Face ID 通行金鑰喵（點一下就好）</p><button id="bEnroll" class="btn primary big pulse">😺 設定 Face ID</button><button id="bSkip" class="btn ghost" hidden>先不要，直接看</button><button id="bCopy" class="btn big" hidden>📋 複製設定碼（加到主畫面後貼上用）</button><p id="sbNote" class="note" hidden></p></div>
+ <div id="entry"><button id="bScan" class="btn big">📷 掃描 QR 碼</button>
+ <details id="rec" open><summary>忘記／換手機／旅伴邀請碼？</summary><p class="hint">貼上或輸入「設定連結」、「旅伴邀請連結／邀請碼」或「復原密語」都可以（大小寫、空白、換行、前面的 RECOVERY_PASSPHRASE= 都沒關係）</p>
+ <textarea id="pp" rows="2" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="text" enterkeyhint="go" aria-label="復原密語或邀請碼" placeholder="在這裡貼上或輸入…"></textarea>
+ <button id="bPaste" class="btn big">📋 貼上</button><button id="bPass" class="btn primary big">🔓 解鎖</button></details></div>
  <p id="lerr" class="err" role="alert"></p></div>
 </div>
 <div id="app" hidden>
@@ -24,4 +27,5 @@
 <div id="sheet" class="sheet" hidden><div class="sheethead"><button id="sClose" class="btn ghost">‹ 返回</button><b id="sTitle"></b><span></span></div><div id="sBody" class="sheetbody"></div></div>
 <div id="qr" class="qrfull" hidden><div class="qrtip">☀️ 請把螢幕亮度調到最亮，對方比較好掃喵</div><img id="qrImg" alt="QR Code"><div id="qrCap" class="qrcap"></div><div id="qrNav" class="qrnav"></div><button id="qClose" class="btn">完成</button></div>
 <div id="share" class="qrfull" hidden><h2>👫 分享給旅伴</h2><div class="warn">⚠️ 這個 QR Code 等於行程的「鑰匙」。只在<b>你本人面對面</b>、她用自己的 iPhone 相機掃的時候才顯示；不要截圖、不要傳訊息、不要拍照留存。</div><button id="bShareAuth" class="btn primary">🔐 用 Face ID 確認後顯示 QR</button><div id="shareOut" hidden><canvas id="shareQr" width="1" height="1"></canvas><div id="shareCode" class="qrcap"></div><div class="qrtip">掃不到時，請她輸入上面的邀請碼（鎖定畫面「旅伴邀請碼」）</div><div id="shareTimer" class="qrtip"></div></div><p id="shareErr" class="err" role="alert"></p><button id="shareClose" class="btn">關閉並清除</button></div>
-<script src="qrcode.js"></script><script src="app.js"></script></body></html>
+<div id="scan" class="scan" hidden><video id="scanVideo" playsinline muted autoplay></video><div class="scanframe"></div><div id="scanMsg" class="scanmsg"></div><button id="scanClose" class="btn big">取消</button></div>
+<script src="qrcode.js"></script><script src="jsQR.js"></script><script src="app.js"></script></body></html>
