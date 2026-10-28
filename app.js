@@ -2,7 +2,7 @@
 const $=id=>document.getElementById(id), te=new TextEncoder(), LS='bkk_cred_v1', LOCK_MS=5*60e3;
 const ub=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0)), bu=b=>btoa(String.fromCharCode(...new Uint8Array(b)));
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let V=null,KEY=null,RAW=null,M=null,blobs=new Map(),hiddenAt=0,ST={v:'home'},IDX=null;
+let ROLE='',CODE='',SHT=null,V=null,KEY=null,RAW=null,M=null,blobs=new Map(),hiddenAt=0,ST={v:'home'},IDX=null;
 /* ---------- crypto ---------- */
 const aesKey=(raw,use)=>crypto.subtle.importKey('raw',raw,'AES-GCM',false,use);
 async function pbk(pw,w){const b=await crypto.subtle.importKey('raw',te.encode(pw),'PBKDF2',false,['deriveBits']);
@@ -15,13 +15,38 @@ async function dec(name){const r=await fetch('d/'+name);if(!r.ok)throw Error('�
 async function blobUrl(n){if(!blobs.has(n))blobs.set(n,URL.createObjectURL(new Blob([await dec(n)],{type:'image/png'})));return blobs.get(n)}
 const err=m=>$('lerr').textContent=m||'';
 async function openWith(raw){KEY=await aesKey(raw,['decrypt']);M=JSON.parse(new TextDecoder().decode(await dec(V.m)));IDX=null}
+const normCode=v=>String(v).toUpperCase().replace(/[^A-Z0-9]/g,''),CODE_RE=/^[A-HJKMNP-Z2-9]{20}$/;
+/* ---------- companion invite (owner side: needs a fresh Face ID check) ---------- */
+function shareHide(){if(SHT){clearInterval(SHT);SHT=null}const s=$('share');if(!s)return;s.hidden=true;$('shareOut').hidden=true;$('shareCode').textContent='';$('shareErr').textContent='';const c=$('shareQr');c.width=c.height=1;c.removeAttribute('data-link');$('bShareAuth').hidden=false}
+function shareOpen(){if(!KEY||ROLE==='c')return;shareHide();$('share').hidden=false}
+function drawQR(cv,text){const q=qrcode(0,'M');q.addData(text);q.make();const n=q.getModuleCount(),m=4,sc=Math.max(4,Math.floor(720/(n+2*m)));cv.width=cv.height=(n+2*m)*sc;
+ const g=cv.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,cv.width,cv.height);g.fillStyle='#000';for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(q.isDark(r,c))g.fillRect((c+m)*sc,(r+m)*sc,sc,sc)}
+async function shareAuth(){const E=m=>$('shareErr').textContent=m||'';let raw=null;try{E();
+ const cred=JSON.parse(localStorage.getItem(LS)||'null');if(!cred)throw Error('這支手機還沒設定 Face ID，請先鎖定後用復原密語設定');
+ if(cred.r==='c')throw Error('旅伴的手機不能再分享');
+ const out=await prfGet(ub(cred.id));       // fresh passkey assertion (Face ID) every time
+ raw=new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv:ub(cred.iv)},await prfKey(out),ub(cred.ct)));
+ const hk=await crypto.subtle.importKey('raw',raw,'HKDF',false,['deriveKey']),ik=await crypto.subtle.deriveKey({name:'HKDF',hash:'SHA-256',salt:te.encode('bkk-trip-v1'),info:te.encode('invite')},hk,{name:'AES-GCM',length:256},false,['decrypt']);
+ const r=await fetch('d/'+V.inv);if(!r.ok)throw Error('讀取邀請失敗');const b=new Uint8Array(await r.arrayBuffer());
+ const code=JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:b.slice(0,12)},ik,b.slice(12)))).c;
+ const link=location.origin+location.pathname+'#c='+code+'&e='+(Date.now()+10*60e3);
+ drawQR($('shareQr'),link);$('shareQr').dataset.link=link;$('shareCode').textContent=code.match(/.{5}/g).join('-');
+ $('bShareAuth').hidden=true;$('shareOut').hidden=false;let left=180;const T=()=>{$('shareTimer').textContent='這個畫面 '+Math.floor(left/60)+':'+String(left%60).padStart(2,'0')+' 後自動關閉'};T();
+ SHT=setInterval(()=>{left--;if(left<=0)shareHide();else T()},1000)}
+ catch(e){E('無法顯示：'+(e&&e.message||e))}finally{if(raw)raw.fill(0)}}
 /* ---------- lock screen ---------- */
 async function initLock(){
  try{V=await (await fetch('vault.json',{cache:'no-cache'})).json()}catch(e){if(!V){err('離線又沒有快取，請連網再開一次喵');return}}
- const cred=localStorage.getItem(LS), s=new URLSearchParams(location.hash.slice(1)).get('s');
+ const cred=localStorage.getItem(LS), HP=new URLSearchParams(location.hash.slice(1)), s=HP.get('s');
  $('bFace').hidden=!cred;$('setupBox').hidden=true;$('bSkip').hidden=true;
  $('lmsg').textContent=cred?'用 Face ID 解鎖喵～':'請用設定連結開啟，或輸入復原密語喵';
+ $('bCopy').hidden=true;
  if(s){history.replaceState(null,'',location.pathname);try{RAW=await unwrapPw(s,V.setup);$('lmsg').textContent='設定連結正確喵！';$('setupBox').hidden=false}catch(e){err('設定連結不對喵')}}
+ const c=HP.get('c'),ex=+HP.get('e')||0;
+ if(c){history.replaceState(null,'',location.pathname);
+  if(ex&&Date.now()>ex)err('這個邀請 QR 已過期，請對方重新顯示一張新的喵');
+  else if(!V.comp)err('這個版本不支援旅伴邀請喵');
+  else try{RAW=await unwrapPw(normCode(c),V.comp);ROLE='c';CODE=normCode(c);$('lmsg').textContent='旅伴邀請正確喵！先加到主畫面，再設定你自己的 Face ID';$('setupBox').hidden=false;$('bCopy').hidden=false}catch(e){err('邀請連結不對或已作廢喵')}}
 }
 async function prfGet(rawId){const a=await navigator.credentials.get({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),
  allowCredentials:[{type:'public-key',id:rawId}],userVerification:'required',extensions:{prf:{eval:{first:ub(V.prfSalt)}}}}});
@@ -33,18 +58,19 @@ async function enroll(){try{err();if(!window.PublicKeyCredential)throw Error('�
  const ext=c.getClientExtensionResults();if(ext.prf&&ext.prf.enabled===false)throw Error('裝置不支援 PRF（需要 iOS 18 以上）');
  const out=(ext.prf&&ext.prf.results&&ext.prf.results.first)||await prfGet(c.rawId);
  const iv=crypto.getRandomValues(new Uint8Array(12)),ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},await prfKey(out),RAW);
- localStorage.setItem(LS,JSON.stringify({id:bu(c.rawId),iv:bu(iv),ct:bu(ct)}));
+ localStorage.setItem(LS,JSON.stringify({id:bu(c.rawId),iv:bu(iv),ct:bu(ct),r:ROLE}));CODE='';$('bCopy').hidden=true;
  if(!KEY)await openWith(RAW);RAW=null;unlocked()}catch(e){err('設定失敗喵：'+e.message)}}
-async function face(){try{err();const c=JSON.parse(localStorage.getItem(LS));const out=await prfGet(ub(c.id));
+async function face(){try{err();const c=JSON.parse(localStorage.getItem(LS));ROLE=c.r||'';const out=await prfGet(ub(c.id));
  await openWith(await crypto.subtle.decrypt({name:'AES-GCM',iv:ub(c.iv)},await prfKey(out),ub(c.ct)));unlocked()}catch(e){err('解鎖失敗喵：'+e.message)}}
-async function pass(){const v=$('pp').value.trim();if(!v)return;try{err('解密中，請稍等喵…');const raw=await unwrapPw(v,V.pass);$('pp').value='';$('pp').blur();err();
- await openWith(raw);if(!localStorage.getItem(LS)){RAW=raw;$('setupBox').hidden=false;$('bSkip').hidden=false;$('lmsg').textContent='密語正確！可以順便設定 Face ID 喵'}else unlocked()}catch(e){err('密語不對喵')}}
+async function pass(){const v=$('pp').value.trim();if(!v)return;try{err('解密中，請稍等喵…');let raw=null;const nc=normCode(v);if(V.comp&&CODE_RE.test(nc)){try{raw=await unwrapPw(nc,V.comp);ROLE='c';CODE=nc}catch(e){raw=null}}
+ if(!raw)raw=await unwrapPw(v,V.pass);$('pp').value='';$('pp').blur();err();
+ await openWith(raw);if(!localStorage.getItem(LS)){RAW=raw;$('setupBox').hidden=false;$('bSkip').hidden=false;$('lmsg').textContent=ROLE==='c'?'邀請碼正確！請設定你自己的 Face ID 喵':'密語正確！可以順便設定 Face ID 喵'}else unlocked()}catch(e){err('密語不對喵')}}
 function unlocked(){RAW=null;$('lock').hidden=true;$('app').hidden=false;hiddenAt=0;
  const s=history.state&&history.state.v?history.state:{v:'home'};history.replaceState(s,'');render(s);tick()}
-function lock(){KEY=null;M=null;RAW=null;IDX=null;blobs.forEach(u=>URL.revokeObjectURL(u));blobs.clear();
+function lock(){shareHide();ROLE='';CODE='';KEY=null;M=null;RAW=null;IDX=null;blobs.forEach(u=>URL.revokeObjectURL(u));blobs.clear();
  LASTKEY='';$('main').innerHTML='';$('sBody').innerHTML='';$('qrImg').removeAttribute('src');$('sheet').hidden=$('qr').hidden=true;$('app').hidden=true;$('lock').hidden=false;err();initLock()}
 /* auto-lock only after >=5 min truly in background */
-function onHide(){if(KEY&&!hiddenAt)hiddenAt=Date.now()}
+function onHide(){shareHide();if(KEY&&!hiddenAt)hiddenAt=Date.now()}
 function onShow(){if(!KEY){hiddenAt=0;return}if(hiddenAt&&Date.now()-hiddenAt>=LOCK_MS)lock();hiddenAt=0}
 document.addEventListener('visibilitychange',()=>document.visibilityState==='hidden'?onHide():onShow());
 window.addEventListener('pagehide',onHide);window.addEventListener('pageshow',e=>{if(e.persisted)onShow()});
@@ -83,7 +109,7 @@ function home(){const now=Date.now(),E=allEv(),i=E.findIndex(e=>e.ts>now),nx=E[i
   <a class="qa" href="tel:${M.contacts[0].phone.replace(/ /g,'')}"><b>📞</b>打給飯店</a>
   <button class="qa" data-go="qrcat" data-c="esim"><b>📶</b>eSIM QR Code</button>
   <button class="qa" data-go="qrdoc" data-t="TDAC"><b>🛂</b>入境卡 TDAC QR</button>
-  <button class="qa" data-go="docs"><b>🎫</b>票券錢包</button></div>`;
+  <button class="qa" data-go="docs"><b>🎫</b>票券錢包</button>${V.comp&&V.inv&&ROLE!=='c'?'<button class="qa" data-go="share"><b>👫</b>分享給旅伴</button>':''}</div>`;
  if(nx){const di=nx.di,d=M.days[di],ev=E.filter(e=>e.di===di).slice(0,40);
   h+=`<div class="sec">第 ${di+1} 天・${esc(dayDate(d))}</div><div class="tl">${ev.map(e=>evRow({...e,next:e===nx},now)).join('')}</div>`}
  h+=`<div class="sec">曼谷天氣</div><div class="card wx" id="wx"><button class="btn sm" id="bWx">☀️ 查看 7 天天氣（open-meteo）</button></div>`;
@@ -134,11 +160,13 @@ function search(s){$('ttl').textContent='搜尋';$('main').innerHTML=`<input id=
 function bind(){$('main').querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{const g=b.dataset.go,i=+b.dataset.i;
  if(g==='day')nav({v:'days',d:+b.dataset.d},!!b.dataset.r&&ST.v==='days');else if(g==='docs')nav({v:'docs'});
  else if(g==='sheet')nav({...ST,keepScroll:1,sheetDoc:i});else if(g==='qr')nav({...ST,keepScroll:1,qr:{i,k:0}});
+ else if(g==='share')shareOpen();
  else if(g==='qrdoc'){const j=M.docs.findIndex(d=>d.title.includes(b.dataset.t)&&d.qrs.length);if(j>=0)nav({...ST,keepScroll:1,qr:{i:j,k:0}})}
  else if(g==='qrcat'){const j=M.docs.findIndex(d=>d.cat===b.dataset.c&&d.qrs.length);nav({...ST,keepScroll:1,qr:{i:j,k:0}})}})}
 async function loadImgs(root){for(const im of root.querySelectorAll('img[data-enc]')){const n=im.dataset.enc;im.removeAttribute('data-enc');try{im.src=await blobUrl(n)}catch(e){}}}
 /* ---------- chrome ---------- */
 document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{if(ST.v===b.dataset.t&&!ST.sheetDoc&&!ST.qr){scrollTo({top:0,behavior:'smooth'});return}nav({v:b.dataset.t})});
+$('shareClose').onclick=shareHide;$('bShareAuth').onclick=shareAuth;$('bCopy').onclick=async()=>{try{await navigator.clipboard.writeText(CODE.match(/.{5}/g).join('-'));$('lmsg').textContent='已複製邀請碼！加到主畫面後貼上喵'}catch(e){$('lmsg').textContent='無法複製，請手動記下：'+CODE.match(/.{5}/g).join('-')}};
 $('sClose').onclick=()=>history.back();$('qClose').onclick=()=>history.back();
 $('bSearch').onclick=()=>nav({v:'search'});$('bLock').onclick=lock;
 $('bFace').onclick=face;$('bEnroll').onclick=enroll;$('bSkip').onclick=unlocked;$('bPass').onclick=pass;$('pp').onkeydown=e=>{if(e.key==='Enter')pass()};

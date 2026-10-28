@@ -52,3 +52,5 @@ nav#tabs i{font-style:normal;font-size:22px;filter:grayscale(1);opacity:.6}nav#t
 .empty{color:var(--mut);text-align:center;padding:24px}
 @media (orientation:landscape) and (max-height:500px){.hero .big{font-size:26px}}
 .prose img{display:block;margin:8px auto;border-radius:12px;max-height:60vh;width:auto}
+
+#share{overflow:auto}#share h2{margin:0}#share .warn{background:#FFE9E3;color:#8a2a12;border-radius:12px;padding:10px 12px;font-size:14px;line-height:1.5;max-width:420px}#share #shareOut{display:flex;flex-direction:column;align-items:center;gap:10px}#shareQr{width:min(78vw,50vh);height:auto;image-rendering:pixelated;border:1px solid var(--line)}#shareCode{font-family:ui-monospace,Menlo,monospace;letter-spacing:1px}
