@@ -82,6 +82,7 @@ function home(){const now=Date.now(),E=allEv(),i=E.findIndex(e=>e.ts>now),nx=E[i
   <a class="qa" target="_blank" rel="noopener noreferrer" href="${esc(M.contacts[0].nav)}"><b>🏨</b>回飯店導航</a>
   <a class="qa" href="tel:${M.contacts[0].phone.replace(/ /g,'')}"><b>📞</b>打給飯店</a>
   <button class="qa" data-go="qrcat" data-c="esim"><b>📶</b>eSIM QR Code</button>
+  <button class="qa" data-go="qrdoc" data-t="TDAC"><b>🛂</b>入境卡 TDAC QR</button>
   <button class="qa" data-go="docs"><b>🎫</b>票券錢包</button></div>`;
  if(nx){const di=nx.di,d=M.days[di],ev=E.filter(e=>e.di===di).slice(0,40);
   h+=`<div class="sec">第 ${di+1} 天・${esc(dayDate(d))}</div><div class="tl">${ev.map(e=>evRow({...e,next:e===nx},now)).join('')}</div>`}
@@ -110,7 +111,7 @@ function docs(){$('ttl').textContent='票券錢包';let h='',cat='';
 async function openSheet(i){const d=M.docs[i];$('sheet').dataset.i=i;$('sTitle').textContent=d.title;$('sheet').hidden=false;
  $('sBody').innerHTML=`${d.note?`<p class="daysub">${esc(d.note)}</p>`:''}<div class="wallet"><div class="stripe ${CATC[d.cat]}"></div><div class="wb"><div class="code">${esc(d.code||'')}</div><div class="wm">${esc(d.when||'')}</div>${d.qrs.length?`<div class="acts"><button class="btn sm primary" id="sQR">▣ QR 全螢幕</button></div>`:''}</div></div>`+d.pages.map(p=>`<img class="pg" data-enc="${p}" alt="憑證頁面">`).join('');
  $('sBody').scrollTop=0;const q=$('sQR');if(q)q.onclick=()=>nav({...ST,qr:{i,k:0}});loadImgs($('sBody'))}
-async function showQR(q){const d=M.docs[q.i],k=q.k||0;$('qr').hidden=false;$('qrCap').textContent=`${d.title}${d.qrs.length>1?`（${k+1}/${d.qrs.length}）`:''}`;
+async function showQR(q){const d=M.docs[q.i],k=q.k||0;$('qr').hidden=false;$('qrCap').textContent=d.qrlabels&&d.qrlabels[k]?`${d.title}｜${d.qrlabels[k]}（${k+1}/${d.qrs.length}）`:`${d.title}${d.qrs.length>1?`（${k+1}/${d.qrs.length}）`:''}`;
  $('qrNav').innerHTML=d.qrs.length>1?`<button class="btn sm" id="qP" ${k?'':'disabled'}>‹ 上一個</button><button class="btn sm" id="qN" ${k<d.qrs.length-1?'':'disabled'}>下一個 ›</button>`:'';
  if($('qP')){$('qP').onclick=()=>nav({...ST,qr:{i:q.i,k:k-1}},true);$('qN').onclick=()=>nav({...ST,qr:{i:q.i,k:k+1}},true)}
  $('qrImg').src=await blobUrl(d.qrs[k].img)}
@@ -133,6 +134,7 @@ function search(s){$('ttl').textContent='搜尋';$('main').innerHTML=`<input id=
 function bind(){$('main').querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{const g=b.dataset.go,i=+b.dataset.i;
  if(g==='day')nav({v:'days',d:+b.dataset.d},!!b.dataset.r&&ST.v==='days');else if(g==='docs')nav({v:'docs'});
  else if(g==='sheet')nav({...ST,keepScroll:1,sheetDoc:i});else if(g==='qr')nav({...ST,keepScroll:1,qr:{i,k:0}});
+ else if(g==='qrdoc'){const j=M.docs.findIndex(d=>d.title.includes(b.dataset.t)&&d.qrs.length);if(j>=0)nav({...ST,keepScroll:1,qr:{i:j,k:0}})}
  else if(g==='qrcat'){const j=M.docs.findIndex(d=>d.cat===b.dataset.c&&d.qrs.length);nav({...ST,keepScroll:1,qr:{i:j,k:0}})}})}
 async function loadImgs(root){for(const im of root.querySelectorAll('img[data-enc]')){const n=im.dataset.enc;im.removeAttribute('data-enc');try{im.src=await blobUrl(n)}catch(e){}}}
 /* ---------- chrome ---------- */
