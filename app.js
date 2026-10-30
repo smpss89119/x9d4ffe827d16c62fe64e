@@ -143,16 +143,17 @@ function render(s){ST=s;const V2={home,days,docs,tel,info,search}[s.v]||home,key
 /* ---------- views ---------- */
 function evRow(e,now){const p=phones(e.label),past=e.ts+30*6e4<now&&!(e.next),isNext=e.next;
  return `<div class="ev ${isNext?'now':past?'past':''}"><div class="t">${esc(hm(e.ts,TZ(e)))}${TZ(e)==='Asia/Taipei'?'<div class="tz">台北</div>':''}</div><span class="dot"></span><div class="b"><p>${esc(lab(e))}</p>`+
- ((e.nav||p.length)?`<div class="acts">${e.nav?`<a class="btn sm" target="_blank" rel="noopener noreferrer" href="${esc(e.nav)}">📍 導航</a>`:''}${p.map(x=>`<a class="btn sm" href="tel:${x.replace(/ /g,'')}">📞 ${esc(x)}</a>`).join('')}</div>`:'')+`</div></div>`}
+ ((e.nav||e.view||p.length)?`<div class="acts">${e.nav?`<a class="btn sm" target="_blank" rel="noopener noreferrer" href="${esc(e.nav)}">📍 導航</a>`:''}${e.view?`<a class="btn sm" target="_blank" rel="noopener noreferrer" href="${esc(e.view)}">🗺️ 查看位置</a>`:''}${p.map(x=>`<a class="btn sm" href="tel:${x.replace(/ /g,'')}">📞 ${esc(x)}</a>`).join('')}</div>`:'')+`</div></div>`}
 function home(){const now=Date.now(),E=allEv(),i=E.findIndex(e=>e.ts>now),nx=E[i],cur=i>0?E[i-1]:null;$('ttl').textContent='曼谷喵導遊';
  const start=Date.parse('2026-10-31T05:45:00+08:00');let h='';
  if(nx){const before=now<start;h+=`<div class="card hero"><div class="k">${before?'🧳 出發倒數':'🐾 下一站喵'}・第 ${nx.di+1} 天</div><div class="big">${cd(nx.ts-now)}</div>
   <div class="lab">${esc(lab(nx))}</div><div class="k">${esc(fmt(nx.ts,TZ(nx)))}（${TZ(nx)==='Asia/Taipei'?'台北':'曼谷'}時間）</div>
-  <div class="acts">${nx.nav?`<a class="btn sm" target="_blank" rel="noopener noreferrer" href="${esc(nx.nav)}">📍 導航</a>`:''}<button class="btn sm" data-go="day" data-d="${nx.di}">看當天行程 ›</button></div></div>`;
+  <div class="acts">${nx.nav?`<a class="btn sm" target="_blank" rel="noopener noreferrer" href="${esc(nx.nav)}">📍 導航</a>`:''}${nx.view?`<a class="btn sm" target="_blank" rel="noopener noreferrer" href="${esc(nx.view)}">🗺️ 查看位置</a>`:''}<button class="btn sm" data-go="day" data-d="${nx.di}">看當天行程 ›</button></div></div>`;
   if(cur&&nx.ts-cur.ts<864e5&&now-cur.ts<6*36e5)h+=`<div class="card"><div class="sec" style="margin:0 0 4px">現在大概在</div>${esc(lab(cur))}</div>`}
  else h+=`<div class="card hero"><div class="big">旅程結束 🏡</div><div class="lab">平安回家囉喵，辛苦了！</div></div>`;
  h+=`<div class="sec">快速功能</div><div class="grid2">
   <a class="qa" target="_blank" rel="noopener noreferrer" href="${esc(M.contacts[0].nav)}"><b>🏨</b>回飯店導航</a>
+  <a class="qa" target="_blank" rel="noopener noreferrer" href="${esc(M.contacts[0].view)}"><b>🗺️</b>飯店位置</a>
   <a class="qa" href="tel:${M.contacts[0].phone.replace(/ /g,'')}"><b>📞</b>打給飯店</a>
   <button class="qa" data-go="qrcat" data-c="esim"><b>📶</b>eSIM QR Code</button>
   <button class="qa" data-go="qrdoc" data-t="TDAC"><b>🛂</b>入境卡 TDAC QR</button>
@@ -189,7 +190,7 @@ async function showQR(q){const d=M.docs[q.i],k=q.k||0;$('qr').hidden=false;$('qr
  if($('qP')){$('qP').onclick=()=>nav({...ST,qr:{i:q.i,k:k-1}},true);$('qN').onclick=()=>nav({...ST,qr:{i:q.i,k:k+1}},true)}
  $('qrImg').src=await blobUrl(d.qrs[k].img)}
 function tel(){$('ttl').textContent='聯絡與電話';$('main').innerHTML=`<p class="daysub">點一下直接撥號喵（泰國號碼要開漫遊或用 eSIM）</p>`+M.contacts.map(c=>{const [ic,...nm]=c.name.split(' ');
- return `<div class="card ct"><div class="ci">${ic}</div><div class="cb"><div class="cn">${esc(nm.join(' '))}</div>${c.note?`<div class="cs">${esc(c.note)}</div>`:''}<div class="acts">${c.phone?`<a class="btn sm primary" href="tel:${c.phone.replace(/ /g,'')}">📞 ${esc(c.phone)}</a>`:''}${c.nav?`<a class="btn sm" target="_blank" rel="noopener noreferrer" href="${esc(c.nav)}">📍 導航</a>`:''}</div></div></div>`}).join('')}
+ return `<div class="card ct"><div class="ci">${ic}</div><div class="cb"><div class="cn">${esc(nm.join(' '))}</div>${c.note?`<div class="cs">${esc(c.note)}</div>`:''}<div class="acts">${c.phone?`<a class="btn sm primary" href="tel:${c.phone.replace(/ /g,'')}">📞 ${esc(c.phone)}</a>`:''}${c.nav?`<a class="btn sm" target="_blank" rel="noopener noreferrer" href="${esc(c.nav)}">📍 導航</a>`:''}${c.view?`<a class="btn sm" target="_blank" rel="noopener noreferrer" href="${esc(c.view)}">🗺️ 查看位置</a>`:''}</div></div></div>`}).join('')}
 function info(s){$('ttl').textContent='旅遊資訊';$('main').innerHTML=`<div class="card prose">${M.intro}</div>`+M.others.map((o,i)=>`<details class="notes" ${s.o===i?'open':''}><summary>${esc(o.title)}</summary><div class="card prose">${o.html}</div></details>`).join('');
  document.querySelectorAll('#main details').forEach(dt=>dt.addEventListener('toggle',()=>{if(dt.open)loadImgs(dt)}));
  if(s.q!=null&&s.o!=null){const dt=$('main').querySelectorAll('details')[s.o];loadImgs(dt);setTimeout(()=>hl(dt,s.q),50)}}
