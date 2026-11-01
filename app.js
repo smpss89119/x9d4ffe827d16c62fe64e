@@ -113,7 +113,7 @@ const pass=()=>{const v=$('pp').value;if(v.trim())runSecret(v)};
 function unlocked(){RAW=null;SECRETTXT='';$('lock').hidden=true;$('app').hidden=false;hiddenAt=0;
  const s=history.state&&history.state.v?history.state:{v:'home'};history.replaceState(s,'');render(s);tick()}
 function lock(){shareHide();ROLE='';CODE='';KEY=null;M=null;RAW=null;IDX=null;blobs.forEach(u=>URL.revokeObjectURL(u));blobs.clear();
- LASTKEY='';$('main').innerHTML='';$('sBody').innerHTML='';$('qrImg').removeAttribute('src');$('sheet').hidden=$('qr').hidden=true;$('app').hidden=true;$('lock').hidden=false;err();stopScan();initLock(false)}
+ LASTKEY='';$('main').innerHTML='';$('sBody').innerHTML='';$('qrImg').removeAttribute('src');$('sheet').hidden=$('qr').hidden=true;qvHide();$('qvS').innerHTML='';$('app').hidden=true;$('lock').hidden=false;err();stopScan();initLock(false)}
 /* No short auto-lock: stays unlocked while in use / briefly backgrounded. The key lives only in memory, so when iOS
    closes the app (swipe-away or memory eviction) the next open starts locked and asks for Face ID. Safety net: 12 h in background. */
 const LOCK_MS_BG=12*3600e3;
@@ -138,6 +138,7 @@ function render(s){ST=s;const V2={home,days,docs,tel,info,search}[s.v]||home,key
  document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===s.v));
  if(s.sheetDoc==null){$('sheet').hidden=true;$('sBody').innerHTML=''}
  if(!s.qr){$('qr').hidden=true;$('qrImg').removeAttribute('src')}
+ if(!s.qv)qvHide();else showQV()
  if(key!==LASTKEY||!$('main').firstChild){LASTKEY=key;V2(s);scrollTo(0,0)}
  if(s.sheetDoc!=null&&($('sheet').hidden||$('sheet').dataset.i!=s.sheetDoc))openSheet(s.sheetDoc);if(s.qr)showQR(s.qr)}
 /* ---------- views ---------- */
@@ -155,12 +156,14 @@ function home(){const now=Date.now(),E=allEv(),i=E.findIndex(e=>e.ts>now),nx=E[i
   <a class="qa" target="_blank" rel="noopener noreferrer" href="${esc(M.contacts[0].nav)}"><b>🏨</b>回飯店導航</a>
   <a class="qa" target="_blank" rel="noopener noreferrer" href="${esc(M.contacts[0].view)}"><b>🗺️</b>飯店位置</a>
   <a class="qa" href="tel:${M.contacts[0].phone.replace(/ /g,'')}"><b>📞</b>打給飯店</a>
+  <button class="qa" id="bQV" data-go="qv"><b>🔳</b>QR Code（大皇宮／TDAC）</button>
   <button class="qa" data-go="qrcat" data-c="esim"><b>📶</b>eSIM QR Code</button>
   <button class="qa" data-go="qrdoc" data-t="TDAC"><b>🛂</b>入境卡 TDAC QR</button>
   <button class="qa" data-go="docs"><b>🎫</b>票券錢包</button>${V.comp&&V.inv&&ROLE!=='c'?'<button class="qa" data-go="share"><b>👫</b>分享給旅伴</button>':''}</div>`;
  if(nx){const di=nx.di,d=M.days[di],ev=E.filter(e=>e.di===di).slice(0,40);
   h+=`<div class="sec">第 ${di+1} 天・${esc(dayDate(d))}</div><div class="tl">${ev.map(e=>evRow({...e,next:e===nx},now)).join('')}</div>`}
  h+=`<div class="sec">曼谷天氣</div><div class="card wx" id="wx"><button class="btn sm" id="bWx">☀️ 查看 7 天天氣（open-meteo）</button></div>`;
+ h+=`<p class="daysub" id="appver" style="text-align:center;margin-top:16px">${esc(M.ver||'')}</p>`;
  $('main').innerHTML=h;bind();$('bWx').onclick=wx}
 async function wx(){$('wx').textContent='查詢中喵…';try{const r=await (await fetch('https://api.open-meteo.com/v1/forecast?latitude=13.7352&longitude=100.5603&current=temperature_2m,precipitation&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Asia%2FBangkok&forecast_days=7')).json();
  $('wx').innerHTML=`<div><b>現在 ${r.current.temperature_2m}°C</b>・降雨 ${r.current.precipitation} mm</div>`+r.daily.time.map((t,i)=>`<div class="wxr"><span>${t.slice(5).replace('-','/')}</span><span>${Math.round(r.daily.temperature_2m_min[i])}–${Math.round(r.daily.temperature_2m_max[i])}°C</span><span>☔ ${r.daily.precipitation_probability_max[i]}%</span></div>`).join('')}
@@ -208,10 +211,28 @@ function search(s){$('ttl').textContent='搜尋';$('main').innerHTML=`<input id=
 function bind(){$('main').querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{const g=b.dataset.go,i=+b.dataset.i;
  if(g==='day')nav({v:'days',d:+b.dataset.d},!!b.dataset.r&&ST.v==='days');else if(g==='docs')nav({v:'docs'});
  else if(g==='sheet')nav({...ST,keepScroll:1,sheetDoc:i});else if(g==='qr')nav({...ST,keepScroll:1,qr:{i,k:0}});
- else if(g==='share')shareOpen();
+ else if(g==='share')shareOpen();else if(g==='qv')nav({...ST,keepScroll:1,qv:1});
  else if(g==='qrdoc'){const j=M.docs.findIndex(d=>d.title.includes(b.dataset.t)&&d.qrs.length);if(j>=0)nav({...ST,keepScroll:1,qr:{i:j,k:0}})}
  else if(g==='qrcat'){const j=M.docs.findIndex(d=>d.cat===b.dataset.c&&d.qrs.length);nav({...ST,keepScroll:1,qr:{i:j,k:0}})}})}
 async function loadImgs(root){for(const im of root.querySelectorAll('img[data-enc]')){const n=im.dataset.enc;im.removeAttribute('data-enc');try{im.src=await blobUrl(n)}catch(e){}}}
+
+/* ---------- QR Code viewer (v14): full-screen, swipe / arrows / dots, white bg, big ---------- */
+let QVI=0;
+function qvHide(){const e=$('qv');if(e)e.hidden=true}
+async function showQV(){const L=M.qrv||[];if(!L.length)return;const S=$('qvS');$('qv').hidden=false;
+ if(!S.children.length){S.innerHTML=L.map((q,i)=>`<div class="qvslide" data-i="${i}"><div class="qvbox"><img alt="${esc(q.cap)}"></div><div class="qvcap">${esc(q.cap)}</div><div class="qvsub">${esc(q.sub||'')}</div></div>`).join('');
+  $('qvD').innerHTML=L.map((q,i)=>`<button class="qvdot" data-i="${i}" aria-label="第 ${i+1} 張"></button>`).join('');
+  $('qvD').querySelectorAll('.qvdot').forEach(b=>b.onclick=()=>qvGo(+b.dataset.i));
+  const imgs=S.querySelectorAll('img');for(let i=0;i<L.length;i++){try{imgs[i].src=await blobUrl(L[i].img)}catch(e){}}}
+ S.scrollLeft=QVI*S.clientWidth;qvSync()}
+function qvSync(){const S=$('qvS'),n=S.children.length;if(!n)return;QVI=Math.max(0,Math.min(n-1,Math.round(S.scrollLeft/Math.max(1,S.clientWidth))));
+ $('qvC').textContent=`${QVI+1} / ${n}`;$('qvP').disabled=QVI===0;$('qvN').disabled=QVI===n-1;$('qvD').querySelectorAll('.qvdot').forEach((d,i)=>d.classList.toggle('on',i===QVI))}
+function qvGo(i){const S=$('qvS'),n=S.children.length;i=Math.max(0,Math.min(n-1,i));S.scrollTo({left:i*S.clientWidth,behavior:'smooth'})}
+function qvClose(){if(ST.qv)history.back();else qvHide()}
+$('qvS').addEventListener('scroll',()=>{clearTimeout(qvT);qvT=setTimeout(qvSync,60)},{passive:true});let qvT=0;
+$('qvP').onclick=()=>qvGo(QVI-1);$('qvN').onclick=()=>qvGo(QVI+1);$('qvX').onclick=qvClose;
+addEventListener('resize',()=>{if(!$('qv').hidden)$('qvS').scrollLeft=QVI*$('qvS').clientWidth});
+addEventListener('keydown',e=>{if($('qv').hidden)return;if(e.key==='ArrowLeft')qvGo(QVI-1);else if(e.key==='ArrowRight')qvGo(QVI+1);else if(e.key==='Escape')qvClose()});
 /* ---------- chrome ---------- */
 document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{if(ST.v===b.dataset.t&&!ST.sheetDoc&&!ST.qr){scrollTo({top:0,behavior:'smooth'});return}nav({v:b.dataset.t})});
 $('shareClose').onclick=shareHide;$('bShareAuth').onclick=shareAuth;$('bCopy').onclick=async()=>{try{await navigator.clipboard.writeText(SECRETTXT);$('lmsg').textContent='已複製！到「主畫面 App」按「📋 貼上」就能設定喵'}catch(e){$('lmsg').textContent='無法複製，請手動記下：'+SECRETTXT}};
