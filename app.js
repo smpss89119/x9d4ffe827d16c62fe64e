@@ -217,7 +217,7 @@ function bind(){$('main').querySelectorAll('[data-go]').forEach(b=>b.onclick=()=
  else if(g==='qrcat'){const j=M.docs.findIndex(d=>d.cat===b.dataset.c&&d.qrs.length);nav({...ST,keepScroll:1,qr:{i:j,k:0}})}})}
 async function loadImgs(root){for(const im of root.querySelectorAll('img[data-enc]')){const n=im.dataset.enc;im.removeAttribute('data-enc');try{im.src=await blobUrl(n)}catch(e){}}}
 
-/* ---------- 菜單中英翻譯 (v15) ---------- */
+/* ---------- 菜單中英翻譯 (v16) ---------- */
 function menus(){$('ttl').textContent='菜單中英翻譯';const L=M.menus||[];
  $('main').innerHTML=`<p class="daysub">酒吧／餐廳的中英對照菜單，點一下開啟，離線也能看喵</p>`+L.map((m,i)=>`<div class="wallet"><div class="stripe c-tours"></div><div class="wb"><div class="wt">🍽️ ${esc(m.title)}</div><div class="wm">中英對照菜單・${m.pages.length} 頁・PDF ${m.mb} MB</div>
   <div class="acts"><button class="btn sm primary" data-go="menu" data-i="${i}">📖 開啟菜單</button></div></div></div>`).join('')+`<p class="daysub">內頁可雙指放大。「開啟 PDF 原檔」會用手機內建 PDF 檢視器另開分頁。</p>`;bind()}
