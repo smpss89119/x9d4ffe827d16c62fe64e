@@ -12,7 +12,7 @@ async function prfKey(out){const b=await crypto.subtle.importKey('raw',out,'HKDF
  return crypto.subtle.deriveKey({name:'HKDF',hash:'SHA-256',salt:te.encode('bkk-trip-v1'),info:te.encode('kek')},b,{name:'AES-GCM',length:256},false,['encrypt','decrypt'])}
 async function dec(name){const r=await fetch('d/'+name);if(!r.ok)throw Error('讀取失敗 '+r.status);const b=new Uint8Array(await r.arrayBuffer());
  return crypto.subtle.decrypt({name:'AES-GCM',iv:b.slice(0,12)},KEY,b.slice(12))}
-async function blobUrl(n){if(!blobs.has(n))blobs.set(n,URL.createObjectURL(new Blob([await dec(n)],{type:'image/png'})));return blobs.get(n)}
+async function blobUrl(n,type){if(!blobs.has(n))blobs.set(n,URL.createObjectURL(new Blob([await dec(n)],{type:type||'image/png'})));return blobs.get(n)}
 const err=m=>$('lerr').textContent=m||'';
 async function openWith(raw){KEY=await aesKey(raw,['decrypt']);M=JSON.parse(new TextDecoder().decode(await dec(V.m)));IDX=null}
 const normCode=v=>String(v).toUpperCase().replace(/[^A-Z0-9]/g,''),CODE_RE=/^[A-HJKMNP-Z2-9]{20}$/;
@@ -134,13 +134,13 @@ function todayIdx(){const now=Date.now();let i=M.days.findIndex(d=>d.events.leng
 function nav(s,replace){s=Object.assign({},s);replace?history.replaceState(s,''):history.pushState(s,'');render(s)}
 window.addEventListener('popstate',e=>{if(KEY)render(e.state||{v:'home'})});
 let LASTKEY='';
-function render(s){ST=s;const V2={home,days,docs,tel,info,search}[s.v]||home,key=[s.v,s.d,s.o,s.q,s.open].join('|');
+function render(s){ST=s;const V2={home,days,docs,tel,info,search,menus}[s.v]||home,key=[s.v,s.d,s.o,s.q,s.open].join('|');
  document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===s.v));
- if(s.sheetDoc==null){$('sheet').hidden=true;$('sBody').innerHTML=''}
+ if(s.sheetDoc==null&&s.sheetMenu==null){$('sheet').hidden=true;$('sBody').innerHTML=''}
  if(!s.qr){$('qr').hidden=true;$('qrImg').removeAttribute('src')}
  if(!s.qv)qvHide();else showQV()
  if(key!==LASTKEY||!$('main').firstChild){LASTKEY=key;V2(s);scrollTo(0,0)}
- if(s.sheetDoc!=null&&($('sheet').hidden||$('sheet').dataset.i!=s.sheetDoc))openSheet(s.sheetDoc);if(s.qr)showQR(s.qr)}
+ if(s.sheetDoc!=null&&($('sheet').hidden||$('sheet').dataset.i!=s.sheetDoc))openSheet(s.sheetDoc);if(s.sheetMenu!=null&&($('sheet').hidden||$('sheet').dataset.m!=s.sheetMenu))openMenu(s.sheetMenu);if(s.qr)showQR(s.qr)}
 /* ---------- views ---------- */
 function evRow(e,now){const p=phones(e.label),past=e.ts+30*6e4<now&&!(e.next),isNext=e.next;
  return `<div class="ev ${isNext?'now':past?'past':''}"><div class="t">${esc(hm(e.ts,TZ(e)))}${TZ(e)==='Asia/Taipei'?'<div class="tz">台北</div>':''}</div><span class="dot"></span><div class="b"><p>${esc(lab(e))}</p>`+
@@ -159,6 +159,7 @@ function home(){const now=Date.now(),E=allEv(),i=E.findIndex(e=>e.ts>now),nx=E[i
   <button class="qa" id="bQV" data-go="qv"><b>🔳</b>QR Code（大皇宮／TDAC）</button>
   <button class="qa" data-go="qrcat" data-c="esim"><b>📶</b>eSIM QR Code</button>
   <button class="qa" data-go="qrdoc" data-t="TDAC"><b>🛂</b>入境卡 TDAC QR</button>
+  <button class="qa" id="bMenu" data-go="menus"><b>🍽️</b>菜單中英翻譯</button>
   <button class="qa" data-go="docs"><b>🎫</b>票券錢包</button>${V.comp&&V.inv&&ROLE!=='c'?'<button class="qa" data-go="share"><b>👫</b>分享給旅伴</button>':''}</div>`;
  if(nx){const di=nx.di,d=M.days[di],ev=E.filter(e=>e.di===di).slice(0,40);
   h+=`<div class="sec">第 ${di+1} 天・${esc(dayDate(d))}</div><div class="tl">${ev.map(e=>evRow({...e,next:e===nx},now)).join('')}</div>`}
@@ -185,7 +186,7 @@ function docs(){$('ttl').textContent='票券錢包';let h='',cat='';
   h+=`<div class="wallet"><div class="stripe ${CATC[d.cat]||''}"></div><div class="wb"><div class="wt">${esc(d.title)}</div><div class="code">${esc(d.code||'')}</div><div class="wm">🗓️ ${esc(d.when||'')}</div>
   <div class="acts">${d.qrs.length?`<button class="btn sm primary" data-go="qr" data-i="${i}">▣ QR 全螢幕${d.qrs.length>1?`（${d.qrs.length}）`:''}</button>`:''}<button class="btn sm" data-go="sheet" data-i="${i}">📄 原始憑證（${d.pages.length} 頁）</button></div></div></div>`});
  $('main').innerHTML=`<p class="daysub">共 ${M.docs.length} 份文件、${M.docs.reduce((a,d)=>a+d.qrs.length,0)} 個 QR Code，離線也能打開喵</p>`+h;bind()}
-async function openSheet(i){const d=M.docs[i];$('sheet').dataset.i=i;$('sTitle').textContent=d.title;$('sheet').hidden=false;
+async function openSheet(i){const d=M.docs[i];delete $('sheet').dataset.m;$('sheet').dataset.i=i;$('sTitle').textContent=d.title;$('sheet').hidden=false;
  $('sBody').innerHTML=`${d.note?`<p class="daysub">${esc(d.note)}</p>`:''}<div class="wallet"><div class="stripe ${CATC[d.cat]}"></div><div class="wb"><div class="code">${esc(d.code||'')}</div><div class="wm">${esc(d.when||'')}</div>${d.qrs.length?`<div class="acts"><button class="btn sm primary" id="sQR">▣ QR 全螢幕</button></div>`:''}</div></div>`+d.pages.map(p=>`<img class="pg" data-enc="${p}" alt="憑證頁面">`).join('');
  $('sBody').scrollTop=0;const q=$('sQR');if(q)q.onclick=()=>nav({...ST,qr:{i,k:0}});loadImgs($('sBody'))}
 async function showQR(q){const d=M.docs[q.i],k=q.k||0;$('qr').hidden=false;$('qrCap').textContent=d.qrlabels&&d.qrlabels[k]?`${d.title}｜${d.qrlabels[k]}（${k+1}/${d.qrs.length}）`:`${d.title}${d.qrs.length>1?`（${k+1}/${d.qrs.length}）`:''}`;
@@ -200,22 +201,30 @@ function info(s){$('ttl').textContent='旅遊資訊';$('main').innerHTML=`<div c
 function index(){if(IDX)return IDX;IDX=[];const P=new DOMParser();
  const add=(html,meta)=>P.parseFromString(html,'text/html').body.querySelectorAll('li,p,td,h3,h4').forEach(n=>{if(n.querySelector('li'))return;const t=n.textContent.trim();if(t)IDX.push({t,...meta})});
  M.days.forEach((d,i)=>add(d.html,{k:'day',d:i,w:`第 ${d.n} 天`}));M.others.forEach((o,i)=>add(o.html,{k:'info',o:i,w:o.title}));
- M.docs.forEach((d,i)=>IDX.push({t:`${d.title} ${d.code||''} ${d.when||''}`,k:'doc',i,w:'票券'}));M.contacts.forEach(c=>IDX.push({t:`${c.name} ${c.phone||''} ${c.note||''}`,k:'tel',w:'聯絡'}));return IDX}
+ M.docs.forEach((d,i)=>IDX.push({t:`${d.title} ${d.code||''} ${d.when||''}`,k:'doc',i,w:'票券'}));M.contacts.forEach(c=>IDX.push({t:`${c.name} ${c.phone||''} ${c.note||''}`,k:'tel',w:'聯絡'}));(M.menus||[]).forEach((m,i)=>IDX.push({t:`${m.title} 中英菜單 菜單翻譯 menu`,k:'menu',i,w:'菜單'}));return IDX}
 function search(s){$('ttl').textContent='搜尋';$('main').innerHTML=`<input id="q" class="srch" type="search" placeholder="搜尋地點、餐廳、訂位代號…" value="${esc(s.q||'')}" enterkeyhint="search"><div id="hits"></div>`;
  const run=()=>{const q=$('q').value.trim();ST={...ST,q};history.replaceState(ST,'');LASTKEY=[ST.v,ST.d,ST.o,ST.q,ST.open].join('|');if(!q){$('hits').innerHTML='<div class="empty">輸入關鍵字喵，例如「火鍋」「QR」「訂位代號」</div>';return}
   const ql=q.toLowerCase(),r=index().filter(x=>x.t.toLowerCase().includes(ql)).slice(0,60);
   $('hits').innerHTML=r.length?r.map((x,j)=>{const i=x.t.toLowerCase().indexOf(ql),a=Math.max(0,i-24);return `<button class="hit" data-h="${j}"><small>${esc(x.w)}</small><br>${a?'…':''}${esc(x.t.slice(a,i))}<mark>${esc(x.t.slice(i,i+q.length))}</mark>${esc(x.t.slice(i+q.length,i+q.length+60))}…</button>`}).join(''):'<div class="empty">找不到喵 😿</div>';
   $('hits').querySelectorAll('.hit').forEach(b=>b.onclick=()=>{const x=r[+b.dataset.h];
-   if(x.k==='day')nav({v:'days',d:x.d,q,open:1});else if(x.k==='info')nav({v:'info',o:x.o,q});else if(x.k==='doc')nav({v:'docs',sheetDoc:x.i});else nav({v:'tel'})})};
+   if(x.k==='day')nav({v:'days',d:x.d,q,open:1});else if(x.k==='info')nav({v:'info',o:x.o,q});else if(x.k==='doc')nav({v:'docs',sheetDoc:x.i});else if(x.k==='menu')nav({v:'menus',sheetMenu:x.i});else nav({v:'tel'})})};
  $('q').oninput=run;run();if(!s.q)setTimeout(()=>$('q').focus(),50)}
 function bind(){$('main').querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{const g=b.dataset.go,i=+b.dataset.i;
  if(g==='day')nav({v:'days',d:+b.dataset.d},!!b.dataset.r&&ST.v==='days');else if(g==='docs')nav({v:'docs'});
- else if(g==='sheet')nav({...ST,keepScroll:1,sheetDoc:i});else if(g==='qr')nav({...ST,keepScroll:1,qr:{i,k:0}});
+ else if(g==='menus')nav({v:'menus'});else if(g==='menu')nav({...ST,keepScroll:1,sheetMenu:i});else if(g==='sheet')nav({...ST,keepScroll:1,sheetDoc:i});else if(g==='qr')nav({...ST,keepScroll:1,qr:{i,k:0}});
  else if(g==='share')shareOpen();else if(g==='qv')nav({...ST,keepScroll:1,qv:1});
  else if(g==='qrdoc'){const j=M.docs.findIndex(d=>d.title.includes(b.dataset.t)&&d.qrs.length);if(j>=0)nav({...ST,keepScroll:1,qr:{i:j,k:0}})}
  else if(g==='qrcat'){const j=M.docs.findIndex(d=>d.cat===b.dataset.c&&d.qrs.length);nav({...ST,keepScroll:1,qr:{i:j,k:0}})}})}
 async function loadImgs(root){for(const im of root.querySelectorAll('img[data-enc]')){const n=im.dataset.enc;im.removeAttribute('data-enc');try{im.src=await blobUrl(n)}catch(e){}}}
 
+/* ---------- 菜單中英翻譯 (v15) ---------- */
+function menus(){$('ttl').textContent='菜單中英翻譯';const L=M.menus||[];
+ $('main').innerHTML=`<p class="daysub">酒吧／餐廳的中英對照菜單，點一下開啟，離線也能看喵</p>`+L.map((m,i)=>`<div class="wallet"><div class="stripe c-tours"></div><div class="wb"><div class="wt">🍽️ ${esc(m.title)}</div><div class="wm">中英對照菜單・${m.pages.length} 頁・PDF ${m.mb} MB</div>
+  <div class="acts"><button class="btn sm primary" data-go="menu" data-i="${i}">📖 開啟菜單</button></div></div></div>`).join('')+`<p class="daysub">內頁可雙指放大。「開啟 PDF 原檔」會用手機內建 PDF 檢視器另開分頁。</p>`;bind()}
+async function openMenu(i){const m=M.menus[i];delete $('sheet').dataset.i;$('sheet').dataset.m=i;$('sTitle').textContent=m.title+'・中英菜單';$('sheet').hidden=false;
+ $('sBody').innerHTML=`<div class="acts" style="margin-bottom:10px"><a class="btn sm primary" id="mPdf" target="_blank" rel="noopener noreferrer" aria-disabled="true">📄 開啟 PDF 原檔（${m.mb} MB）</a></div>`+m.pages.map((p,k)=>`<img class="pg" data-enc="${p}" alt="${esc(m.title)} 菜單第 ${k+1} 頁">`).join('');
+ $('sBody').scrollTop=0;loadImgs($('sBody'));
+ try{const u=await blobUrl(m.pdf,'application/pdf');const a=$('mPdf');if(a&&$('sheet').dataset.m==i){a.href=u;a.removeAttribute('aria-disabled')}}catch(e){const a=$('mPdf');if(a)a.textContent='PDF 原檔讀取失敗，請看下方頁面'}}
 /* ---------- QR Code viewer (v14): full-screen, swipe / arrows / dots, white bg, big ---------- */
 let QVI=0;
 function qvHide(){const e=$('qv');if(e)e.hidden=true}

@@ -82,3 +82,5 @@ details#rec{margin-top:14px;color:var(--ink);font-size:15px;text-align:left}deta
 .qvmid{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px}.qvcount{font-size:16px;font-weight:700}.qvdots{display:flex;gap:10px}
 .qvdot{width:14px;height:14px;border-radius:50%;border:2px solid #000;background:#fff;padding:0}.qvdot.on{background:#000}
 @media (orientation:landscape) and (max-height:500px){.qvbox img{width:min(60vh,46vw);height:min(60vh,46vw)}.qvtip{display:none}.qvcap{font-size:16px}}
+
+a[aria-disabled=true]{opacity:.5;pointer-events:none}
