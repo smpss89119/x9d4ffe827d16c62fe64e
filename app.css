@@ -84,3 +84,19 @@ details#rec{margin-top:14px;color:var(--ink);font-size:15px;text-align:left}deta
 @media (orientation:landscape) and (max-height:500px){.qvbox img{width:min(60vh,46vw);height:min(60vh,46vw)}.qvtip{display:none}.qvcap{font-size:16px}}
 
 a[aria-disabled=true]{opacity:.5;pointer-events:none}
+
+/* v21 boarding-pass viewer */
+.bp{position:fixed;inset:0;z-index:46;background:#111;color:#fff;display:flex;flex-direction:column}.bp[hidden]{display:none}
+.bptop{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:calc(var(--st) + 8px) 12px 6px}
+.bptip{font-size:13px;color:#111;background:#FFE08A;padding:6px 10px;border-radius:20px;line-height:1.3}
+.bpclose{min-height:44px;padding:0 16px;font-size:16px;font-weight:700;flex:none;background:#fff;color:#111}
+.bps{flex:1;min-height:0;display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;scrollbar-width:none;touch-action:pan-x}.bps::-webkit-scrollbar{display:none}
+.bpslide{flex:0 0 100%;width:100%;height:100%;scroll-snap-align:center;scroll-snap-stop:always;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:8px;padding:0 10px 6px;box-sizing:border-box;overflow:hidden}
+.bpzoom{flex:1;min-height:0;width:100%;overflow:auto;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y pinch-zoom;border-radius:10px;background:#000;display:flex;align-items:flex-start;justify-content:center}
+.bpzoom img{display:block;width:100%;height:auto;max-width:none;background:#fff;border-radius:8px;-webkit-user-drag:none;transform-origin:0 0;touch-action:manipulation}
+.bpcap{font-size:16px;font-weight:800;text-align:center;line-height:1.3;color:#fff;flex:none}.bpsub{font-size:12px;color:#bbb;text-align:center;line-height:1.35;flex:none;padding:0 8px}
+.bpfoot{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 14px calc(var(--sb) + 14px)}
+.bparrow{width:64px;min-height:56px;font-size:34px;line-height:1;padding:0;display:flex;align-items:center;justify-content:center;flex:none;background:#fff;color:#111}.bparrow:disabled{opacity:.3}
+.bpmid{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px}.bpcount{font-size:16px;font-weight:700}.bpdots{display:flex;gap:10px}
+.bpdot{width:14px;height:14px;border-radius:50%;border:2px solid #fff;background:transparent;padding:0}.bpdot.on{background:#fff}
+@media (orientation:landscape) and (max-height:500px){.bptip{display:none}.bpcap{font-size:14px}}

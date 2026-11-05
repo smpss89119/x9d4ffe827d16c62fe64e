@@ -113,7 +113,7 @@ const pass=()=>{const v=$('pp').value;if(v.trim())runSecret(v)};
 function unlocked(){RAW=null;SECRETTXT='';$('lock').hidden=true;$('app').hidden=false;hiddenAt=0;
  const s=history.state&&history.state.v?history.state:{v:'home'};history.replaceState(s,'');render(s);tick()}
 function lock(){shareHide();ROLE='';CODE='';KEY=null;M=null;RAW=null;IDX=null;blobs.forEach(u=>URL.revokeObjectURL(u));blobs.clear();
- LASTKEY='';$('main').innerHTML='';$('sBody').innerHTML='';$('qrImg').removeAttribute('src');$('sheet').hidden=$('qr').hidden=true;qvHide();$('qvS').innerHTML='';$('app').hidden=true;$('lock').hidden=false;err();stopScan();initLock(false)}
+ LASTKEY='';$('main').innerHTML='';$('sBody').innerHTML='';$('qrImg').removeAttribute('src');$('sheet').hidden=$('qr').hidden=true;qvHide();bpHide();$('qvS').innerHTML='';if($('bpS'))$('bpS').innerHTML='';$('app').hidden=true;$('lock').hidden=false;err();stopScan();initLock(false)}
 /* No short auto-lock: stays unlocked while in use / briefly backgrounded. The key lives only in memory, so when iOS
    closes the app (swipe-away or memory eviction) the next open starts locked and asks for Face ID. Safety net: 12 h in background. */
 const LOCK_MS_BG=12*3600e3;
@@ -139,6 +139,7 @@ function render(s){ST=s;const V2={home,days,docs,tel,info,search,menus}[s.v]||ho
  if(s.sheetDoc==null&&s.sheetMenu==null){$('sheet').hidden=true;$('sBody').innerHTML=''}
  if(!s.qr){$('qr').hidden=true;$('qrImg').removeAttribute('src')}
  if(!s.qv)qvHide();else showQV()
+ if(!s.bp)bpHide();else showBP()
  if(key!==LASTKEY||!$('main').firstChild){LASTKEY=key;V2(s);scrollTo(0,0)}
  if(s.sheetDoc!=null&&($('sheet').hidden||$('sheet').dataset.i!=s.sheetDoc))openSheet(s.sheetDoc);if(s.sheetMenu!=null&&($('sheet').hidden||$('sheet').dataset.m!=s.sheetMenu))openMenu(s.sheetMenu);if(s.qr)showQR(s.qr)}
 /* ---------- views ---------- */
@@ -156,9 +157,10 @@ function home(){const now=Date.now(),E=allEv(),i=E.findIndex(e=>e.ts>now),nx=E[i
   <a class="qa" target="_blank" rel="noopener noreferrer" href="${esc(M.contacts[0].nav)}"><b>🏨</b>回飯店導航</a>
   <a class="qa" target="_blank" rel="noopener noreferrer" href="${esc(M.contacts[0].view)}"><b>🗺️</b>飯店位置</a>
   <a class="qa" href="tel:${M.contacts[0].phone.replace(/ /g,'')}"><b>📞</b>打給飯店</a>
-  <button class="qa" id="bQV" data-go="qv"><b>🔳</b>QR Code（大皇宮／TDAC）</button>
+  <button class="qa" id="bBP" data-go="bp"><b>✈️</b>機票</button>
+  <button class="qa" data-go="qrdoc" data-t="超級銀河號"><b>🚢</b>遊船 QR（今晚）</button>
+  <a class="qa" target="_blank" rel="noopener noreferrer" href="https://www.google.com/maps/dir/?api=1&destination=Suvarnabhumi+Airport%2C+Bangkok"><b>🛫</b>機場導航</a>
   <button class="qa" data-go="qrcat" data-c="esim"><b>📶</b>eSIM QR Code</button>
-  <button class="qa" data-go="qrdoc" data-t="TDAC"><b>🛂</b>入境卡 TDAC QR</button>
   <button class="qa" id="bMenu" data-go="menus"><b>🍽️</b>菜單中英翻譯</button>
   <button class="qa" data-go="docs"><b>🎫</b>票券錢包</button>${V.comp&&V.inv&&ROLE!=='c'?'<button class="qa" data-go="share"><b>👫</b>分享給旅伴</button>':''}</div>`;
  if(nx){const di=nx.di,d=M.days[di],ev=E.filter(e=>e.di===di).slice(0,40);
@@ -212,7 +214,7 @@ function search(s){$('ttl').textContent='搜尋';$('main').innerHTML=`<input id=
 function bind(){$('main').querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{const g=b.dataset.go,i=+b.dataset.i;
  if(g==='day')nav({v:'days',d:+b.dataset.d},!!b.dataset.r&&ST.v==='days');else if(g==='docs')nav({v:'docs'});
  else if(g==='menus')nav({v:'menus'});else if(g==='menu')nav({...ST,keepScroll:1,sheetMenu:i});else if(g==='sheet')nav({...ST,keepScroll:1,sheetDoc:i});else if(g==='qr')nav({...ST,keepScroll:1,qr:{i,k:0}});
- else if(g==='share')shareOpen();else if(g==='qv')nav({...ST,keepScroll:1,qv:1});
+ else if(g==='share')shareOpen();else if(g==='qv')nav({...ST,keepScroll:1,qv:1});else if(g==='bp')nav({...ST,keepScroll:1,bp:1});
  else if(g==='qrdoc'){const j=M.docs.findIndex(d=>d.title.includes(b.dataset.t)&&d.qrs.length);if(j>=0)nav({...ST,keepScroll:1,qr:{i:j,k:0}})}
  else if(g==='qrcat'){const j=M.docs.findIndex(d=>d.cat===b.dataset.c&&d.qrs.length);nav({...ST,keepScroll:1,qr:{i:j,k:0}})}})}
 async function loadImgs(root){for(const im of root.querySelectorAll('img[data-enc]')){const n=im.dataset.enc;im.removeAttribute('data-enc');try{im.src=await blobUrl(n)}catch(e){}}}
@@ -242,6 +244,34 @@ $('qvS').addEventListener('scroll',()=>{clearTimeout(qvT);qvT=setTimeout(qvSync,
 $('qvP').onclick=()=>qvGo(QVI-1);$('qvN').onclick=()=>qvGo(QVI+1);$('qvX').onclick=qvClose;
 addEventListener('resize',()=>{if(!$('qv').hidden)$('qvS').scrollLeft=QVI*$('qvS').clientWidth});
 addEventListener('keydown',e=>{if($('qv').hidden)return;if(e.key==='ArrowLeft')qvGo(QVI-1);else if(e.key==='ArrowRight')qvGo(QVI+1);else if(e.key==='Escape')qvClose()});
+/* ---------- boarding-pass viewer (v21): full-screen swipe / arrows / dots, pinch-zoom friendly ---------- */
+let BPI=0,bpPinch=null;
+function bpHide(){const e=$('bp');if(e)e.hidden=true}
+async function showBP(){const L=M.bpv||[];if(!L.length){bpHide();return}const S=$('bpS');$('bp').hidden=false;
+ if(!S.children.length){S.innerHTML=L.map((q,i)=>`<div class="bpslide" data-i="${i}"><div class="bpzoom"><img alt="${esc(q.cap)}" draggable="false"></div><div class="bpcap">${esc(q.cap)}</div><div class="bpsub">${esc(q.sub||'')}</div></div>`).join('');
+  $('bpD').innerHTML=L.map((q,i)=>`<button class="bpdot" data-i="${i}" aria-label="第 ${i+1} 張"></button>`).join('');
+  $('bpD').querySelectorAll('.bpdot').forEach(b=>b.onclick=()=>bpGo(+b.dataset.i));
+  const imgs=S.querySelectorAll('img');for(let i=0;i<L.length;i++){try{imgs[i].src=await blobUrl(L[i].img)}catch(e){}}
+  bpBindZoom(S)}
+ S.scrollLeft=BPI*S.clientWidth;bpSync()}
+function bpSync(){const S=$('bpS'),n=S.children.length;if(!n)return;BPI=Math.max(0,Math.min(n-1,Math.round(S.scrollLeft/Math.max(1,S.clientWidth))));
+ $('bpC').textContent=`${BPI+1} / ${n}`;$('bpP').disabled=BPI===0;$('bpN').disabled=BPI===n-1;$('bpD').querySelectorAll('.bpdot').forEach((d,i)=>d.classList.toggle('on',i===BPI))}
+function bpGo(i){const S=$('bpS'),n=S.children.length;i=Math.max(0,Math.min(n-1,i));S.scrollTo({left:i*S.clientWidth,behavior:'smooth'})}
+function bpClose(){if(ST.bp)history.back();else bpHide()}
+function bpBindZoom(S){S.querySelectorAll('.bpzoom').forEach(z=>{
+  let scale=1,tx=0,ty=0,base=null,lastTap=0;
+  const img=z.querySelector('img');
+  const apply=()=>{img.style.transform=`translate(${tx}px,${ty}px) scale(${scale})`;z.style.overflow=scale>1.01?'auto':'hidden'};
+  z.addEventListener('dblclick',e=>{e.preventDefault();scale=scale>1.01?1:2.2;if(scale===1){tx=ty=0}apply()},{passive:false});
+  z.addEventListener('touchend',e=>{if(e.touches.length)return;const now=Date.now();if(now-lastTap<280){scale=scale>1.01?1:2.2;if(scale===1){tx=ty=0}apply();lastTap=0}else lastTap=now},{passive:true});
+  z.addEventListener('touchstart',e=>{if(e.touches.length===2){const a=e.touches[0],b=e.touches[1];base={d:Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY),s:scale}}}, {passive:true});
+  z.addEventListener('touchmove',e=>{if(e.touches.length===2&&base){e.preventDefault();const a=e.touches[0],b=e.touches[1];const d=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);scale=Math.max(1,Math.min(4,base.s*(d/base.d)));apply()}},{passive:false});
+  z.addEventListener('touchend',()=>{base=null},{passive:true});
+})}
+$('bpS').addEventListener('scroll',()=>{clearTimeout(bpT);bpT=setTimeout(bpSync,60)},{passive:true});let bpT=0;
+$('bpP').onclick=()=>bpGo(BPI-1);$('bpN').onclick=()=>bpGo(BPI+1);$('bpX').onclick=bpClose;
+addEventListener('resize',()=>{if(!$('bp').hidden)$('bpS').scrollLeft=BPI*$('bpS').clientWidth});
+addEventListener('keydown',e=>{if($('bp').hidden)return;if(e.key==='ArrowLeft')bpGo(BPI-1);else if(e.key==='ArrowRight')bpGo(BPI+1);else if(e.key==='Escape')bpClose()});
 /* ---------- chrome ---------- */
 document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{if(ST.v===b.dataset.t&&!ST.sheetDoc&&!ST.qr){scrollTo({top:0,behavior:'smooth'});return}nav({v:b.dataset.t})});
 $('shareClose').onclick=shareHide;$('bShareAuth').onclick=shareAuth;$('bCopy').onclick=async()=>{try{await navigator.clipboard.writeText(SECRETTXT);$('lmsg').textContent='已複製！到「主畫面 App」按「📋 貼上」就能設定喵'}catch(e){$('lmsg').textContent='無法複製，請手動記下：'+SECRETTXT}};
