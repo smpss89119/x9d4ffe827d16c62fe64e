@@ -158,10 +158,6 @@ function home(){const now=Date.now(),E=allEv(),i=E.findIndex(e=>e.ts>now),nx=E[i
   <a class="qa" target="_blank" rel="noopener noreferrer" href="${esc(M.contacts[0].view)}"><b>🗺️</b>飯店位置</a>
   <a class="qa" href="tel:${M.contacts[0].phone.replace(/ /g,'')}"><b>📞</b>打給飯店</a>
   <button class="qa" id="bBP" data-go="bp"><b>✈️</b>機票</button>
-  <a class="qa" href="tel:1155"><b>🚨</b>觀光警察 1155</a>
-  <a class="qa" target="_blank" rel="noopener noreferrer" href="https://www.google.com/maps/dir/?api=1&destination=Taipei+Economic+and+Cultural+Office+in+Thailand%2C+Lak+Si%2C+Bangkok"><b>🏛️</b>TECO 導航</a>
-  <a class="qa" href="tel:+6621193555"><b>📞</b>TECO 領務</a>
-  <a class="qa" target="_blank" rel="noopener noreferrer" href="https://www.google.com/maps/dir/?api=1&destination=Srisang+Photo+Service+Sukhumvit+23+Bangkok"><b>📷</b>證件照導航</a>
   <a class="qa" target="_blank" rel="noopener noreferrer" href="https://www.google.com/maps/dir/?api=1&destination=Suvarnabhumi+Airport%2C+Bangkok"><b>🛫</b>機場導航</a>
   <button class="qa" data-go="qrcat" data-c="esim"><b>📶</b>eSIM QR Code</button>
   <button class="qa" id="bMenu" data-go="menus"><b>🍽️</b>菜單中英翻譯</button>
